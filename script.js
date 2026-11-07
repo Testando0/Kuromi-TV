@@ -1,106 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
-            // ==========================================
-            // ⚙️ CONFIGURAÇÃO CENTRALIZADA DA CRISÁLIDA
-            // ==========================================
-            const tvConfig = {
-    enabled: true,
-    baseUrl: "https://sinalpublicoetv.vercel.app",
-                categorias: [
-                    {
-                        nome: "Canais Abertos",
-                        canais: [
-                            { id: "globorj", nome: "Globo RJ" },
-                            { id: "globosp", nome: "Globo SP" },
-                            { id: "globomg", nome: "Globo MG" },
-                            { id: "globope", nome: "Globo PE" },
-                            { id: "globopb", nome: "Globo PB" },
-                            { id: "globors", nome: "Globo RS" },
-                            { id: "globoes", nome: "Globo ES" },
-                            { id: "globoam", nome: "Globo AM" },
-                            { id: "globoce", nome: "Globo CE" },
-                            { id: "sbt", nome: "SBT" },
-                            { id: "sbtsp", nome: "SBT SP" },
-                            { id: "sbtrj", nome: "SBT RJ" },
-                            { id: "record", nome: "Record TV" },
-                            { id: "band", nome: "Band" }
-                        ]
-                    },
-                    {
-                        nome: "Notícias",
-                        canais: [
-                            { id: "globonews", nome: "GloboNews" },
-                            { id: "sbtnews", nome: "SBT NEWS" },
-                            { id: "bandnews", nome: "BandNews" },
-                            { id: "cnnbrasil", nome: "CNN Brasil" },
-                            { id: "jovempan", nome: "Jovem Pan News" }
-                        ]
-                    },
-                    {
-                        nome: "Esportes",
-                        canais: [
-                            { id: "sportv", nome: "SporTV" },
-                            { id: "sportv2", nome: "SporTV 2" },
-                            { id: "sportv3", nome: "SporTV 3" },
-                            { id: "espn", nome: "ESPN" },
-                            { id: "espn2", nome: "ESPN 2" },
-                            { id: "espn3", nome: "ESPN 3" },
-                            { id: "espn4", nome: "ESPN 4" },
-                            { id: "premiere", nome: "Premiere" },
-                            { id: "combate", nome: "Combate" },
-                            { id: "cazetv", nome: "Cazé TV" },
-                            { id: "bandsports", nome: "Band Sports" }
-                        ]
-                    },
-                    {
-                        nome: "Filmes e Séries",
-                        canais: [
-                            { id: "telecine", nome: "Telecine" },
-                            { id: "telecinepremium", nome: "Telecine Premium" },
-                            { id: "telecinepipoca", nome: "Telecine Pipoca" },
-                            { id: "telecineaction", nome: "Telecine Action" },
-                            { id: "universal", nome: "Universal TV" },
-                            { id: "studiouniversal", nome: "Studio Universal" },
-                            { id: "megapix", nome: "Megapix" },
-                            { id: "amc", nome: "AMC" },
-                            { id: "paramount", nome: "Paramount Network" },
-                            { id: "axn", nome: "AXN" },
-                            { id: "syfy", nome: "Syfy" }
-                        ]
-                    },
-                    {
-                        nome: "Infantil",
-                        canais: [
-                            { id: "gloob", nome: "Gloob" },
-                            { id: "gloobinho", nome: "Gloobinho" },
-                            { id: "nickelodeon", nome: "Nickelodeon" },
-                            { id: "nickjr", nome: "Nick Jr." },
-                            { id: "cartoonnetwork", nome: "Cartoon Network" },
-                            { id: "discoverykids", nome: "Discovery Kids" },
-                            { id: "ratimbum", nome: "Rá-Tim-Bum" }
-                        ]
-                    },
-                    {
-                        nome: "Documentários e Cultura",
-                        canais: [
-                            { id: "canalbrasil", nome: "Canal Brasil" },
-                            { id: "arte1", nome: "Arte 1" },
-                            { id: "discovery", nome: "Discovery Channel" },
-                            { id: "history", nome: "History Channel" },
-                            { id: "animalplanet", nome: "Animal Planet" },
-                            { id: "natgeo", nome: "National Geographic" }
-                        ]
-                    },
-                    {
-                        nome: "Variedades e Música",
-                        canais: [
-                            { id: "multishow", nome: "Multishow" },
-                            { id: "gnt", nome: "GNT" },
-                            { id: "bis", nome: "BIS" },
-                            { id: "mtv", nome: "MTV" }
-                        ]
-                    }
-                ]
-            };
+            const tvConfig = { enabled: true, baseUrl: "https://sinalpublicoetv.vercel.app" };
+            let channelCatalog = [];
+            let currentStream = null;
 
             // --- CONSTANTES E ELEMENTOS DO DOM ---
             const mainContent = document.getElementById('main-content');
@@ -135,9 +36,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const welcomeMessage = document.getElementById('welcome-message');
 
             const player = document.getElementById('tv-player');
+            const legacyPlayer = document.getElementById('legacy-player');
             const currentChannelDisplay = document.getElementById('current-channel');
             const playerContainer = document.querySelector('.player-container');
             const dynamicChannelsContainer = document.getElementById('dynamic-channels-container');
+            const channelSearch = document.getElementById('channel-search');
+            const channelCountry = document.getElementById('channel-country');
+            const channelCount = document.getElementById('channel-count');
 
             // --- CÓDIGOS DE RECARGA ---
             let rechargeData = { VALID_CODES: {}, MS_PER_DAY: 0 }; 
@@ -349,23 +254,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 📺 LÓGICA DINÂMICA DE CANAIS (CRISÁLIDA)
             // ==========================================
             const renderChannels = () => {
-                if (!tvConfig.enabled) {
-                    dynamicChannelsContainer.innerHTML = '<p style="text-align:center; color: var(--accent-color); font-size: 1.2em; padding: 20px;">🚫 Sistema de canais temporariamente desativado pela administração.</p>';
-                    return;
-                }
-
-                dynamicChannelsContainer.innerHTML = tvConfig.categorias.map(cat => `
+                const query = (channelSearch.value || '').trim().toLowerCase();
+                const country = channelCountry.value;
+                const matches = channelCatalog.filter(c => {
+                    const haystack = [c.name, c.id, c.country, ...(c.categories || []), ...(c.languages || [])].join(' ').toLowerCase();
+                    return (!query || haystack.includes(query)) && (!country || c.country === country);
+                });
+                channelCount.textContent = `${matches.length.toLocaleString('pt-BR')} canais`;
+                const visible = matches.slice(0, 1000);
+                const groups = {};
+                visible.forEach(c => {
+                    const group = (c.categories && c.categories[0]) || 'other';
+                    (groups[group] ||= []).push(c);
+                });
+                dynamicChannelsContainer.innerHTML = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([group, channels]) => `
                     <div class="channel-category">
-                        <h2>${cat.nome}</h2>
-                        <div class="channel-buttons">
-                            ${cat.canais.map(canal => `
-                                <button class="channel-button" data-channel="${canal.id}" data-name="${canal.nome}">
-                                    ${canal.nome}
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
+                        <h2>${group}</h2>
+                        <div class="channel-buttons">${channels.map(c => `
+                            <button class="channel-button" data-channel="${c.id}" data-name="${c.name}">${c.name}${c.country ? ` <small>(${c.country})</small>` : ''}</button>
+                        `).join('')}</div>
+                    </div>`).join('') || '<p style="text-align:center; padding:20px;">Nenhum canal encontrado.</p>';
+                if (matches.length > visible.length) dynamicChannelsContainer.insertAdjacentHTML('beforeend', `<p style="text-align:center; color:var(--secondary-text-color);">Mostrando 1.000 de ${matches.length.toLocaleString('pt-BR')}. Use a busca para encontrar outros canais.</p>`);
+            };
+
+            const loadCatalog = async () => {
+                const response = await fetch('channels.json', { cache: 'no-cache' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                channelCatalog = data.channels || [];
+                [...new Set(channelCatalog.map(c => c.country).filter(Boolean))].sort().forEach(country => {
+                    channelCountry.insertAdjacentHTML('beforeend', `<option value="${country}">${country}</option>`);
+                });
+                channelSearch.addEventListener('input', renderChannels);
+                channelCountry.addEventListener('change', renderChannels);
+                renderChannels();
             };
 
             // Event Delegation para os botões de canal (mais performático que forEach)
@@ -374,8 +296,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const channelId = e.target.getAttribute('data-channel');
                     const channelName = e.target.getAttribute('data-name');
                     
-                    player.src = `${tvConfig.baseUrl}/?id=${channelId}`;
-                    
+                    const channel = channelCatalog.find(c => c.id === channelId);
+                    const stream = channel && channel.streams && channel.streams[0];
+                    currentStream = stream && stream.url;
+                    if (currentStream) {
+                        legacyPlayer.classList.add('hidden');
+                        player.classList.remove('hidden');
+                        if (window.Hls && Hls.isSupported() && /\.m3u8(?:\?|$)/i.test(currentStream)) {
+                            if (window.activeHls) window.activeHls.destroy();
+                            window.activeHls = new Hls();
+                            window.activeHls.loadSource(currentStream);
+                            window.activeHls.attachMedia(player);
+                        } else { player.src = currentStream; }
+                        player.play().catch(() => {});
+                    } else {
+                        player.classList.add('hidden');
+                        legacyPlayer.classList.remove('hidden');
+                        legacyPlayer.src = `${tvConfig.baseUrl}/?id=${channelId}`;
+                    }
                     currentChannelDisplay.textContent = `Canal Atual: ${channelName}`;
                     openFullscreen(playerContainer);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -407,7 +345,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const userData = users[currentUser];
                 
                 if (userData && userData.accessExpires && userData.accessExpires > Date.now()) {
-                    player.src = player.src; // Recarrega o iFrame
+                    if (currentStream) {
+                        player.src = currentStream;
+                        player.play().catch(() => {});
+                    } else if (!legacyPlayer.classList.contains('hidden')) {
+                        legacyPlayer.src = legacyPlayer.src;
+                    }
                 } else {
                     clearInterval(refreshInterval);
                     checkSession();
@@ -451,7 +394,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             
             // --- INICIALIZAÇÃO ---
-            renderChannels(); // Renderiza a grade de canais
+            loadCatalog().catch(error => {
+                console.error('Falha ao carregar catálogo de canais:', error);
+                dynamicChannelsContainer.innerHTML = '<p style="text-align:center; color:var(--accent-color); padding:20px;">Não foi possível carregar o catálogo de canais.</p>';
+            });
             checkSession();
         });
 
