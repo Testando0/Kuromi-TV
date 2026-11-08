@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
             const tvConfig = { enabled: true, baseUrl: "https://sinalpublicoetv.vercel.app" };
             let channelCatalog = [];
+            let currentStreams = [];
+            let currentStreamIndex = 0;
             let currentStream = null;
 
             // --- CONSTANTES E ELEMENTOS DO DOM ---
@@ -290,6 +292,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderChannels();
             };
 
+            const playCurrentStream = () => {
+                currentStream = currentStreams[currentStreamIndex]?.url || null;
+                if (!currentStream) return false;
+                legacyPlayer.classList.add('hidden');
+                player.classList.remove('hidden');
+                player.pause();
+                player.removeAttribute('src');
+                if (window.activeHls) { window.activeHls.destroy(); window.activeHls = null; }
+                if (window.Hls && Hls.isSupported() && /\.m3u8(?:\?|$)/i.test(currentStream)) {
+                    window.activeHls = new Hls();
+                    window.activeHls.loadSource(currentStream);
+                    window.activeHls.attachMedia(player);
+                    window.activeHls.on(Hls.Events.ERROR, (_event, data) => {
+                        if (data.fatal) advanceStream();
+                    });
+                } else { player.src = currentStream; }
+                player.play().catch(() => {});
+                return true;
+            };
+
+            const advanceStream = () => {
+                if (currentStreamIndex + 1 < currentStreams.length) {
+                    currentStreamIndex += 1;
+                    playCurrentStream();
+                    currentChannelDisplay.textContent += ' (stream alternativo)';
+                } else {
+                    currentChannelDisplay.textContent = 'Stream indisponível no momento';
+                }
+            };
+            player.addEventListener('error', advanceStream);
+
             // Event Delegation para os botões de canal (mais performático que forEach)
             dynamicChannelsContainer.addEventListener('click', (e) => {
                 if (e.target.classList.contains('channel-button')) {
@@ -297,18 +330,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const channelName = e.target.getAttribute('data-name');
                     
                     const channel = channelCatalog.find(c => c.id === channelId);
-                    const stream = channel && channel.streams && channel.streams[0];
-                    currentStream = stream && stream.url;
-                    if (currentStream) {
-                        legacyPlayer.classList.add('hidden');
-                        player.classList.remove('hidden');
-                        if (window.Hls && Hls.isSupported() && /\.m3u8(?:\?|$)/i.test(currentStream)) {
-                            if (window.activeHls) window.activeHls.destroy();
-                            window.activeHls = new Hls();
-                            window.activeHls.loadSource(currentStream);
-                            window.activeHls.attachMedia(player);
-                        } else { player.src = currentStream; }
-                        player.play().catch(() => {});
+                    currentStreams = (channel && channel.streams) || [];
+                    currentStreamIndex = 0;
+                    if (currentStreams.length) {
+                        playCurrentStream();
                     } else {
                         player.classList.add('hidden');
                         legacyPlayer.classList.remove('hidden');
@@ -345,9 +370,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const userData = users[currentUser];
                 
                 if (userData && userData.accessExpires && userData.accessExpires > Date.now()) {
-                    if (currentStream) {
-                        player.src = currentStream;
-                        player.play().catch(() => {});
+                    if (currentStreams.length) {
+                        playCurrentStream();
                     } else if (!legacyPlayer.classList.contains('hidden')) {
                         legacyPlayer.src = legacyPlayer.src;
                     }

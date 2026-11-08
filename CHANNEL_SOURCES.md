@@ -1,21 +1,26 @@
-# Catálogo de canais
+# Catálogo de canais ativos
 
-`channels.json` é um snapshot deduplicado das fontes públicas abaixo. Cada canal mantém os metadados disponíveis e uma lista de streams encontrados.
+O catálogo publicado em `channels.json` usa como fonte principal o endpoint [`channels.online.json`](https://dearbulut.github.io/iptv/api/v1/channels.online.json) do projeto Dearbulut/IPTV Nexus. Esse endpoint é gerado por CI e inclui o estado de saúde de cada stream.
 
-- IPTV-org: https://iptv-org.github.io/api/channels.json, https://iptv-org.github.io/api/streams.json, https://iptv-org.github.io/iptv/index.m3u
-- Dearbulut: https://dearbulut.github.io/iptv/api/v1/channels.online.json, https://dearbulut.github.io/iptv/api/v1/channels.json, https://dearbulut.github.io/iptv/api/v1/streams.json, https://dearbulut.github.io/iptv/playlists/best.m3u
-- Streamline IPTV: https://cdn.jsdelivr.net/gh/streamline-iptv/iptv-playlists@dist/index.m3u
-- A página de playlists do Doubo aponta para playlists do Streamline IPTV, já cobertas pelo importador.
-- Broadcast Atlas é uma página de diretório; não expõe um feed M3U direto no HTML no momento da importação.
+O importador mantém somente streams que atendem simultaneamente a estes critérios:
+
+- `health.status == online`;
+- score de saúde mínimo de 70;
+- uptime mínimo de 80%;
+- URL HTTP(S) sem exigência de `Referer` ou `User-Agent` especial, pois o navegador não consegue aplicar esses cabeçalhos em um elemento de vídeo.
+
+Streams alternativos saudáveis são preservados e o player tenta o próximo automaticamente quando o primeiro falha. O catálogo não importa mais indiscriminadamente todas as URLs de IPTV-org, Streamline, Doubo ou Broadcast Atlas.
 
 ## Atualizar
 
-Baixe novamente os arquivos listados em `scripts/import_channels.py` para `.import/` e execute:
+Execute:
 
 ```bash
 python3 scripts/import_channels.py
 ```
 
-O aplicativo lê o catálogo local, permite pesquisar por nome, país ou categoria e tenta reproduzir o primeiro stream disponível de cada canal.
+Se `/.import/dear_online.json` não existir, o script baixa o endpoint online atual. Para uma atualização manual, baixe novamente esse arquivo e execute o comando acima.
 
-As URLs de transmissão são de terceiros e podem ficar offline, exigir geobloqueio, cabeçalhos específicos ou ser removidas pelos respectivos provedores. Use somente conteúdo que você esteja autorizado a acessar.
+O projeto Free-TV/IPTV é mantido como referência de curadoria de canais gratuitos, mas não é misturado ao catálogo sem passar por verificação de saúde.
+
+> Mesmo com verificação recente, streams de terceiros podem cair, sofrer geobloqueio ou mudar de URL. O player agora tenta streams alternativos elegíveis e informa quando nenhum está disponível.
