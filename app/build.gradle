@@ -1,7 +1,7 @@
 plugins { id 'com.android.application' }
 
-android { namespace 'com.kuromitv.nativeapp'; compileSdk 35
-    defaultConfig { applicationId 'com.kuromitv.nativeapp'; minSdk 21; targetSdk 28; versionCode 1; versionName '1.0.0' }
+android { namespace 'com.kuromitv.nativeapp'; compileSdk 34
+    defaultConfig { applicationId 'com.kuromitv.nativeapp'; minSdk 21; targetSdk 34; versionCode 1; versionName '1.0.0' }
 }
 
 dependencies { }
